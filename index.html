@@ -1,0 +1,234 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+		<title>青武jam プロジェクト技術解説</title>
+
+		<link rel="stylesheet" href="dist/reset.css">
+		<link rel="stylesheet" href="dist/reveal.css">
+		<link rel="stylesheet" href="dist/theme/white.css">
+
+		<!-- Theme used for syntax highlighting of code -->
+		<link rel="stylesheet" href="plugin/highlight/monokai.css">
+        <style>
+			.left-align { text-align: left; }
+            .reveal .slides section p, .reveal .slides section ul, .reveal .slides section li {
+                font-size: 0.75em;
+                line-height: 1.4;
+            }
+		</style>
+	</head>
+	<body>
+		<div class="reveal">
+			<div class="slides">
+
+				<section>
+					<h1>青武jam</h1>
+					<p>Webサイト総合技術解説</p>
+                    <p><small>(ドキュメント・ソースコード準拠)</small></p>
+				</section>
+
+                <section>
+					<section>
+						<h3>アーキテクチャ & 認証</h3>
+						<p class="left-align">ASP.NET Core MVCパターンを基本とし、リアルタイム通信部分をFirebaseが担います。</p>
+						<p class="left-align"><strong>認証フロー:</strong></p>
+						<ul class="left-align">
+							<li><strong>匿名認証 (一般ユーザー):</strong> 掲示板投稿など、登録不要の機能で使用。</li>
+							<li><strong>メール/パスワード認証 (管理者):</strong> 丼カウンター更新など、特権が必要な操作で使用 (<code>admin@seibu.local</code>)。</li>
+						</ul>
+					</section>
+					<section>
+						<h3>中核サービス: FirebaseService.cs</h3>
+						<p class="left-align">Firebase Realtime Databaseとの全ての通信をカプセル化する重要なサービスです。</p>
+						<ul class="left-align">
+							<li><strong>責務:</strong> データベースへのCRUD操作、認証トークン管理、入力値の検証とサニタイズ。</li>
+							<li><strong>XSS対策:</strong> ユーザー入力は <code>System.Net.WebUtility.HtmlEncode</code> を用いてHTMLエンコードし、安全性を確保します。</li>
+						</ul>
+					</section>
+				</section>
+
+                <section>
+					<section>
+						<h2>ホーム & 掲示板</h2>
+						<p>天気予報、風呂の混雑度予測、掲示板機能を提供するメインページ。</p>
+					</section>
+					<section>
+						<h3>技術詳細: ホーム & 掲示板</h3>
+						<p class="left-align">
+							<strong>バックエンド (<code>HomeController</code>, <code>FirebaseController</code>):</strong><br>
+							ページの初期表示と、掲示板への投稿リクエストを処理します。
+						</p>
+						<p class="left-align">
+							<strong>データ永続化 (<code>FirebaseService</code>):</strong><br>
+							Firebaseとの通信を担い、メッセージの投稿や取得を行います。投稿は匿名認証、メッセージ削除は管理者認証が必要です。
+						</p>
+						<p class="left-align">
+							<strong>フロントエンド (<code>Home/Index.cshtml</code>):</strong><br>
+							- <strong>天気:</strong> 気象庁APIを非同期で取得し表示します。<br>
+							- <strong>混雑度:</strong> Chart.jsを使い、曜日や天候を考慮した予測グラフを動的に描画します。<br>
+							- <strong>掲示板:</strong> ユーザー操作をトリガーに非同期でデータを送受信し、UIに反映します。
+						</p>
+					</section>
+				</section>
+
+                <section>
+					<section>
+						<h2>趣味 (Privacy)</h2>
+						<p>開発者の趣味を紹介する、パスワード保護されたページです。</p>
+					</section>
+					<section>
+						<h3>技術詳細: 趣味</h3>
+						<p class="left-align">
+							<strong>バックエンド (<code>HomeController.cs</code>):</strong><br>
+							- <code>Privacy</code>アクションは、単純に<code>Privacy.cshtml</code>ビューを返すシンプルな構成です。
+						</p>
+						<p class="left-align">
+							<strong>フロントエンド (<code>Privacy.cshtml</code> & JS):</strong><br>
+							- <strong>パスワード認証:</strong> JavaScriptで実装された簡易的なパスワードチェック機能。正しいパスワード(<code>1234</code>)が入力されると、動物画像のスライドショーが表示されます。<br>
+							- <strong>画像スライドショー:</strong> 複数の外部API（<code>randomfox.ca</code>, <code>thecatapi.com</code>など）を<code>fetch</code>で非同期に呼び出し、ランダムな動物の画像URLを取得します。<code>setInterval</code>を使い、3秒ごとに異なるAPIを呼び出して画像をと切り替えています。
+						</p>
+					</section>
+				</section>
+
+                <section>
+					<section>
+						<h2>丼カウンター</h2>
+						<p>寮の昼食が「丼」だったかどうかを記録・集計するカウンターです。</p>
+					</section>
+					<section>
+						<h3>技術詳細: 丼カウンター</h3>
+						<p class="left-align">
+							<strong>バックエンド (<code>DonCounterController</code>):</strong><br>
+							カウンターの表示(GET)と、パスワード(<code>seibu2025</code>)で保護された更新/リセット(POST)を処理します。
+						</p>
+						<p class="left-align">
+							<strong>データ永続化 (<code>FirebaseService</code> & Rules):</strong><br>
+							Firebaseのセキュリティルールにより、データの読み取りは全ユーザーに許可し、書き込みは管理者(<code>admin@seibu.local</code>)のみに制限しています。
+						</p>
+						<p class="left-align">
+							<strong>フロントエンド (<code>DonCounter/Index.cshtml</code>):</strong><br>
+							サーバーから渡されたデータを基に、丼率/非丼率を計算し、Bootstrapのプログレスバーで視覚的に表示します。
+						</p>
+					</section>
+				</section>
+
+                <section>
+					<section>
+						<h2>スケジュール</h2>
+						<p>福井高専の年間行事予定を月別のタブとカレンダーで表示します。</p>
+					</section>
+					<section>
+						<h3>技術詳細: スケジュール</h3>
+						<p class="left-align">
+							<strong>バックエンド (<code>HomeController.cs</code>):</strong><br>
+							- <code>schedule</code>アクションは、静的な<code>Schedule.cshtml</code>ビューを返すシンプルな構成です。
+						</p>
+						<p class="left-align">
+							<strong>フロントエンド (<code>Schedule.cshtml</code> & <code>schedule-calendar.js</code>):</strong><br>
+							- <strong>行事データ:</strong> <code>schedule-calendar.js</code>内の<code>ScheduleCalendar</code>クラスに、JavaScriptのオブジェクトとして全行事データがハードコードされています。<br>
+							- <strong>動的カレンダー生成:</strong> ユーザーが月のタブを切り替えると、JavaScriptがその月のカレンダーを動的に生成・描画します。日付セルには、祝日、試験、イベントなどの種類に応じて異なるCSSクラスが付与され、色分けされます。<br>
+							- <strong>凡例表示:</strong> 各月のカレンダー下部には、その月に存在する行事の種類だけの凡例が動的に生成され、ユーザービリティを高めています。
+						</p>
+					</section>
+				</section>
+
+                <section>
+					<section>
+						<h2>デスカウントダウン</h2>
+						<p>次の試験までの残り日数を表示する、刺激的なデザインのページです。</p>
+					</section>
+					<section>
+						<h3>技術詳細: デスカウントダウン</h3>
+						<p class="left-align">
+							<strong>フロントエンド (<code>ExamCountdown.cshtml</code> & JS):</strong><br>
+							- <strong>試験データ:</strong> JavaScriptの配列(<code>scheduleData</code>)として、試験期間のデータが静的に保持されています。<br>
+							- <strong>カウントダウンロジック:</strong> <code>getJapanTime</code>関数で正確な日本時間を取得し、今日の日付と比較して次の試験開始日までの残り日数を計算します。<br>
+							- <strong>UI更新:</strong> 計算結果を基に、メインのカウントダウン表示と、それ以降の試験予定リストを動的に更新します。<br>
+							- <strong>デザイン:</strong> CSSで`Creepster`フォントや、<code>@keyframes</code>を用いたアニメーションを多用し、ページの世界観を演出しています。
+						</p>
+					</section>
+				</section>
+
+                <section>
+					<section>
+                        <h2>高専川柳</h2>
+						<p>高専にまつわる川柳を投稿・閲覧できるページ。（現在プレースホルダー）</p>
+                    </section>
+                    <section>
+                        <h3>技術詳細: 高専川柳</h3>
+                        <p class="left-align">
+                            <strong>バックエンド (<code>HomeController.cs</code>):</strong><br>
+                            - <code>KosenSenryu</code>アクションは定義されていますが、対応するView(<code>KosenSenryu.cshtml</code>)が存在しないため、現状では機能していません。
+                        </p>
+                        <p class="left-align">
+                            <strong>フロントエンド:</strong><br>
+                            - UIと機能は未実装です。今後の開発が予定されています。
+                        </p>
+                    </section>
+				</section>
+
+                <section>
+					<section>
+						<h2>鯖江駅時刻表</h2>
+						<p>鯖江駅のハピラインふくい線の時刻をリアルタイムに表示します。</p>
+					</section>
+					<section>
+						<h3>技術詳細: 鯖江駅時刻表</h3>
+						<p class="left-align">
+							<strong>バックエンド (<code>TrainScheduleController.cs</code>):</strong><br>
+							- <code>Index</code>アクション内で、福井方面と敦賀方面の時刻表データを<code>List&lt;TrainInfo&gt;</code>としてハードコーディングし、Viewに渡しています。
+						</p>
+						<p class="left-align">
+							<strong>フロントエンド (<code>Index.cshtml</code> & JS):</strong><br>
+							- <strong>リアルタイム更新:</strong> <code>setInterval</code>を使い、1秒ごとに現在時刻を更新します。<br>
+							- <strong>次の電車計算:</strong> JavaScriptが現在時刻と全電車の発車時刻を比較し、次に出発する電車を特定します。<br>
+							- <strong>動的ハイライト:</strong> 既に出発した電車には<code>passed-train</code>クラスを、次に出発する電車には<code>next-train</code>クラスを動的に付与し、CSSで見た目を変更しています。
+						</p>
+					</section>
+				</section>
+
+                <section>
+					<section>
+						<h2>AIチャット</h2>
+						<p>3D空間内でAI先生とリアルタイムに対話できる機能です。</p>
+					</section>
+					<section>
+						<h3>技術詳細: AIチャット (1/2)</h3>
+						<p class="left-align">
+							<strong>バックエンド (<code>ChatController.cs</code>):</strong><br>
+							- <code>SendMessage</code>アクションがフロントエンドからのPOSTリクエストを受け取ります。<br>
+							- <code>HttpClient</code>を使い、GoogleのGemini API (<code>gemini-1.5-flash</code>モデル) にユーザーのメッセージを送信します。<br>
+							- APIキーは<code>appsettings.json</code>から安全に読み込まれます。<br>
+							- APIからの応答をJSON形式でフロントエンドに返します。
+						</p>
+					</section>
+					<section>
+						<h3>技術詳細: AIチャット (2/2)</h3>
+						<p class="left-align">
+							<strong>フロントエンド (<code>Index.cshtml</code> & JS):</strong><br>
+							- <strong>3D空間構築:</strong> <code>Three.js</code>ライブラリを用いて、シーン、カメラ、ライト、家具などをプログラムで生成しています。<br>
+							- <strong>3Dモデル読込:</strong> <code>GLTFLoader</code>を使用して、AI先生の3Dモデル(<code>.glb</code>ファイル)を非同期で読み込みます。読み込み失敗時はプロシージャルモデルをフォールバックとして表示します。<br>
+							- <strong>インタラクション:</strong> キーボード操作で3D空間内を移動。AI先生に近づいて<code>@</code>キーでチャットUIを有効化します。<br>
+							- <strong>非同期通信:</strong> <code>fetch</code> APIがバックエンドを呼び出し、AIの応答を待ってチャットログに表示します。
+						</p>
+					</section>
+				</section>
+
+			</div>
+		</div>
+
+		<script src="dist/reveal.js"></script>
+		<script src="plugin/notes/notes.js"></script>
+		<script src="plugin/markdown/markdown.js"></script>
+		<script src="plugin/highlight/highlight.js"></script>
+		<script>
+			Reveal.initialize({
+				hash: true,
+				plugins: [ RevealMarkdown, RevealHighlight, RevealNotes ]
+			});
+		</script>
+	</body>
+</html>
