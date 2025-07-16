@@ -12,12 +12,75 @@
 
 		<!-- Theme used for syntax highlighting of code -->
 		<link rel="stylesheet" href="plugin/highlight/monokai.css">
+        <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
         <style>
-			.left-align { text-align: left; }
-            .reveal .slides section p, .reveal .slides section ul, .reveal .slides section li {
-                font-size: 0.75em;
-                line-height: 1.4;
-            }
+			:root {
+				--accent-color: #4285F4; /* Google Blue */
+				--text-color: #333;
+				--heading-color: #222;
+			}
+
+			body {
+				font-family: 'Roboto', sans-serif;
+				color: var(--text-color);
+			}
+
+			.reveal .slides {
+				padding: 20px; /* 全体のパディングを減らす */
+			}
+
+			.reveal .slides section {
+				text-align: left; /* 全てのスライドを左寄せに */
+			}
+
+			.reveal h1, .reveal h2, .reveal h3 {
+				color: var(--heading-color);
+				text-transform: none; /* 大文字変換を解除 */
+				text-shadow: none; /* テキストシャドウを解除 */
+				border-bottom: 2px solid var(--accent-color); /* アクセントカラーのアンダーライン */
+				padding-bottom: 8px; /* 調整 */
+				margin-bottom: 15px; /* 調整 */
+			}
+
+			.reveal h1 {
+				font-size: 2.2em; /* 調整 */
+			}
+
+			.reveal h2 {
+				font-size: 1.6em; /* 調整 */
+			}
+
+			.reveal h3 {
+				font-size: 1.2em; /* 調整 */
+				color: var(--accent-color); /* h3はアクセントカラーに */
+				border-bottom: none;
+			}
+
+			.reveal p, .reveal ul, .reveal li {
+				font-size: 0.7em; /* 調整 */
+				line-height: 1.4; /* 調整 */
+				margin-bottom: 5px; /* 調整 */
+				word-break: break-word; /* 長い単語を強制的に改行 */
+				overflow-wrap: break-word; /* オーバーフローするコンテンツを改行 */
+			}
+
+			.reveal ul {
+				list-style-type: disc;
+				margin-left: 1.5em;
+			}
+
+			.reveal li {
+				margin-bottom: 5px;
+			}
+
+			.reveal strong {
+				color: var(--accent-color);
+			}
+
+			.reveal small {
+				font-size: 0.7em;
+				opacity: 0.7;
+			}
 		</style>
 	</head>
 	<body>
@@ -68,7 +131,8 @@
 						<p class="left-align">
 							<strong>フロントエンド (<code>Home/Index.cshtml</code>):</strong><br>
 							- <strong>天気:</strong> 気象庁APIを非同期で取得し表示します。<br>
-							- <strong>混雑度:</strong> Chart.jsを使い、曜日や天候を考慮した予測グラフを動的に描画します。<br>
+							- <strong>混雑度（予測）:</strong> Chart.jsを使い、曜日や天候を考慮した予測グラフを動的に描画します。<br>
+							- <strong>混雑度（現在）:</strong> Firebase Realtime Databaseから現在のスリッパ数と混雑度を取得し、リアルタイムに表示します。30秒間隔で自動更新され、手動更新も可能です。<br>
 							- <strong>掲示板:</strong> ユーザー操作をトリガーに非同期でデータを送受信し、UIに反映します。
 						</p>
 					</section>
@@ -76,22 +140,49 @@
 
                 <section>
 					<section>
-						<h2>趣味 (Privacy)</h2>
-						<p>開発者の趣味を紹介する、パスワード保護されたページです。</p>
+						<h2>現在の混雑度取得プログラム</h2>
+						<p>寮の風呂の現在の混雑度をリアルタイムで表示する機能。</p>
 					</section>
 					<section>
-						<h3>技術詳細: 趣味</h3>
+						<h3>技術詳細: バックエンド</h3>
 						<p class="left-align">
-							<strong>バックエンド (<code>HomeController.cs</code>):</strong><br>
-							- <code>Privacy</code>アクションは、単純に<code>Privacy.cshtml</code>ビューを返すシンプルな構成です。
-						</p>
-						<p class="left-align">
-							<strong>フロントエンド (<code>Privacy.cshtml</code> & JS):</strong><br>
-							- <strong>パスワード認証:</strong> JavaScriptで実装された簡易的なパスワードチェック機能。正しいパスワード(<code>1234</code>)が入力されると、動物画像のスライドショーが表示されます。<br>
-							- <strong>画像スライドショー:</strong> 複数の外部API（<code>randomfox.ca</code>, <code>thecatapi.com</code>など）を<code>fetch</code>で非同期に呼び出し、ランダムな動物の画像URLを取得します。<code>setInterval</code>を使い、3秒ごとに異なるAPIを呼び出して画像をと切り替えています。
+							<strong>バックエンド (<code>HomeController.cs</code>, <code>FirebaseService.cs</code>):</strong><br>
+							- <code>HomeController</code>の<code>Index</code>アクションで<code>FirebaseService.GetCurrentBathCongestion()</code>を呼び出し、現在の混雑度データを取得します。<br>
+							- <code>FirebaseService.GetCurrentBathCongestion()</code>は、Firebase Realtime Databaseの<code>bathCongestion/current</code>パスから最新の混雑度情報を取得します。<br>
+							- <code>HomeController</code>には、Ajaxリクエストで最新の混雑度を取得するための<code>GetCurrentCongestion</code>APIエンドポイントも実装されています。
 						</p>
 					</section>
+					<section>
+						<h3>技術詳細: データモデル</h3>
+						<p class="left-align">
+							<strong>データモデル (<code>BathCongestion.cs</code>):</strong><br>
+							- 混雑度情報を格納するためのモデルで、<code>SlippersCount</code>（スリッパ数）、<code>CongestionLevel</code>（混雑レベル）、<code>CongestionPercentage</code>（混雑度パーセンテージ）、<code>Message</code>（表示メッセージ）、<code>LastUpdated</code>（最終更新日時）などのプロパティを持ちます。<br>
+							- <strong>スリッパカウント:</strong> 寮の風呂の混雑度を測るための主要な指標。風呂の入り口に置かれたスリッパの数をカウントし、その数をFirebaseに記録することで、現在の混雑状況を数値化しています。この数値は、混雑度パーセンテージやメッセージの算出にも利用されます。
+						</p>
+					</section>
+					<section>
+						<h3>技術詳細: フロントエンド</h3>
+						<p class="left-align">
+							<strong>フロントエンド (<code>Home/Index.cshtml</code> & JS):</strong><br>
+							- 取得した混雑度データは、<code>Home/Index.cshtml</code>内で表示されます。<br>
+							- JavaScriptにより、30秒間隔での自動更新と、手動での更新機能が提供されています。
+						</p>
+					</section>
+					<section>
+						<h3>プログラム処理手順: スリッパカウントシステム</h3>
+						<p class="left-align">
+							寮の風呂の混雑度をリアルタイムで把握するため、以下の手順でデータが処理されます。
+						</p>
+						<ul class="left-align">
+							<li><strong>1. 画像撮影 (<code>syori_2.py</code>):</strong> 接続されたウェブカメラ（BUSID 2-9）からスリッパの画像を撮影し、一時ファイルとして保存します。</li>
+							<li><strong>2. 画像解析 (<code>gemini_analyzer.py</code>):</strong> 撮影された画像をGoogle Gemini APIに送信し、「画像に写っているスリッパの組数」を質問します。Gemini APIの利用には、複数のモデル（<code>gemini-2.0-flash-lite-001</code>, <code>gemini-2.0-flash</code>, <code>gemini-1.5-flash</code>）を優先順位付けして試行するフォールバックロジックが実装されており、APIクォータやエラー発生時にも対応します。</li>
+							<li><strong>3. スリッパ数抽出と混雑度計算 (<code>firebase_updater.py</code>):</strong> Gemini APIからの解析結果（テキスト）から正規表現を用いてスリッパの組数（数字）を抽出し、その数に基づいて寮の風呂の混雑度（「空いています」などのレベル、パーセンテージ、表示メッセージ）を計算します。</li>
+							<li><strong>4. Firebaseへのデータ送信 (<code>firebase_updater.py</code>):</strong> 計算された混雑度データは、Firebase Admin SDKを通じてFirebase Realtime Databaseに送信されます。現在の混雑度情報（<code>bathCongestion/current</code>）がリアルタイムで更新されるとともに、履歴データ（<code>bathCongestion/history</code>）としても記録されます。</li>
+						</ul>
+					</section>
 				</section>
+
+                
 
                 <section>
 					<section>
@@ -152,23 +243,7 @@
 					</section>
 				</section>
 
-                <section>
-					<section>
-                        <h2>高専川柳</h2>
-						<p>高専にまつわる川柳を投稿・閲覧できるページ。（現在プレースホルダー）</p>
-                    </section>
-                    <section>
-                        <h3>技術詳細: 高専川柳</h3>
-                        <p class="left-align">
-                            <strong>バックエンド (<code>HomeController.cs</code>):</strong><br>
-                            - <code>KosenSenryu</code>アクションは定義されていますが、対応するView(<code>KosenSenryu.cshtml</code>)が存在しないため、現状では機能していません。
-                        </p>
-                        <p class="left-align">
-                            <strong>フロントエンド:</strong><br>
-                            - UIと機能は未実装です。今後の開発が予定されています。
-                        </p>
-                    </section>
-				</section>
+                
 
                 <section>
 					<section>
