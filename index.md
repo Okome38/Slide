@@ -40,42 +40,6 @@ Firebaseとの通信を担い、メッセージの投稿や取得を行います
 
 ---
 
-## 現在の混雑度取得プログラム
-寮の風呂の現在の混雑度をリアルタイムで表示する機能。
-
----
-
-### 技術詳細: バックエンド
-**バックエンド (`HomeController.cs`, `FirebaseService.cs`):**
-- `HomeController`の`Index`アクションで`FirebaseService.GetCurrentBathCongestion()`を呼び出し、現在の混雑度データを取得します。
-- `FirebaseService.GetCurrentBathCongestion()`は、Firebase Realtime Databaseの`bathCongestion/current`パスから最新の混雑度情報を取得します。
-- `HomeController`には、Ajaxリクエストで最新の混雑度を取得するための`GetCurrentCongestion`APIエンドポイントも実装されています。
-
----
-
-### 技術詳細: データモデル
-**データモデル (`BathCongestion.cs`):**
-- 混雑度情報を格納するためのモデルで、`SlippersCount`（スリッパ数）、`CongestionLevel`（混雑レベル）、`CongestionPercentage`（混雑度パーセンテージ）、`Message`（表示メッセージ）、`LastUpdated`（最終更新日時）などのプロパティを持ちます。
-- **スリッパカウント:** 寮の風呂の混雑度を測るための主要な指標。風呂の入り口に置かれたスリッパの数をカウントし、その数をFirebaseに記録することで、現在の混雑状況を数値化しています。この数値は、混雑度パーセンテージやメッセージの算出にも利用されます。
-
----
-
-### 技術詳細: フロントエンド
-**フロントエンド (`Home/Index.cshtml` & JS):**
-- 取得した混雑度データは、`Home/Index.cshtml`内で表示されます。
-- JavaScriptにより、30秒間隔での自動更新と、手動での更新機能が提供されています。
-
----
-
-### プログラム処理手順: スリッパカウントシステム
-寮の風呂の混雑度をリアルタイムで把握するため、以下の手順でデータが処理されます。
-- **1. 画像撮影 (`syori_2.py`):** 接続されたウェブカメラ（BUSID 2-9）からスリッパの画像を撮影し、一時ファイルとして保存します。
-- **2. 画像解析 (`gemini_analyzer.py`):** 撮影された画像をGoogle Gemini APIに送信し、「画像に写っているスリッパの組数」を質問します。Gemini APIの利用には、複数のモデル（`gemini-2.0-flash-lite-001`, `gemini-2.0-flash`, `gemini-1.5-flash`）を優先順位付けして試行するフォールバックロジックが実装されており、APIクォータやエラー発生時にも対応します。
-- **3. スリッパ数抽出と混雑度計算 (`firebase_updater.py`):** Gemini APIからの解析結果（テキスト）から正規表現を用いてスリッパの組数（数字）を抽出し、その数に基づいて寮の風呂の混雑度（「空いています」などのレベル、パーセンテージ、表示メッセージ）を計算します。
-- **4. Firebaseへのデータ送信 (`firebase_updater.py`):** 計算された混雑度データは、Firebase Admin SDKを通じてFirebase Realtime Databaseに送信されます。現在の混雑度情報（`bathCongestion/current`）がリアルタイムで更新されるとともに、履歴データ（`bathCongestion/history`）としても記録されます。
-
----
-
 ## 丼カウンター
 寮の昼食が「丼」だったかどうかを記録・集計するカウンターです。
 
@@ -139,23 +103,36 @@ Firebaseのセキュリティルールにより、データの読み取りは全
 
 ---
 
-## AIチャット
-3D空間内でAI先生とリアルタイムに対話できる機能です。
+## 現在の混雑度取得プログラム
+寮の風呂の現在の混雑度をリアルタイムで表示する機能。
 
 ---
 
-### 技術詳細: AIチャット (1/2)
-**バックエンド (`ChatController.cs`):**
-- `SendMessage`アクションがフロントエンドからのPOSTリクエストを受け取ります。
-- `HttpClient`を使い、GoogleのGemini API (`gemini-1.5-flash`モデル) にユーザーのメッセージを送信します。
-- APIキーは`appsettings.json`から安全に読み込まれます。
-- APIからの応答をJSON形式でフロントエンドに返します。
+### 技術詳細: バックエンド
+**バックエンド (`HomeController.cs`, `FirebaseService.cs`):**
+- `HomeController`の`Index`アクションで`FirebaseService.GetCurrentBathCongestion()`を呼び出し、現在の混雑度データを取得します。
+- `FirebaseService.GetCurrentBathCongestion()`は、Firebase Realtime Databaseの`bathCongestion/current`パスから最新の混雑度情報を取得します。
+- `HomeController`には、Ajaxリクエストで最新の混雑度を取得するための`GetCurrentCongestion`APIエンドポイントも実装されています。
 
 ---
 
-### 技術詳細: AIチャット (2/2)
-**フロントエンド (`Index.cshtml` & JS):**
-- **3D空間構築:** `Three.js`ライブラリを用いて、シーン、カメラ、ライト、家具などをプログラムで生成しています。
-- **3Dモデル読込:** `GLTFLoader`を使用して、AI先生の3Dモデル(`.glb`ファイル)を非同期で読み込みます。読み込み失敗時はプロシージャルモデルをフォールバックとして表示します。
-- **インタラクション:** キーボード操作で3D空間内を移動。AI先生に近づいて`@`キーでチャットUIを有効化します。
-- **非同期通信:** `fetch` APIがバックエンドを呼び出し、AIの応答を待ってチャットログに表示します。
+### 技術詳細: データモデル
+**データモデル (`BathCongestion.cs`):**
+- 混雑度情報を格納するためのモデルで、`SlippersCount`（スリッパ数）、`CongestionLevel`（混雑レベル）、`CongestionPercentage`（混雑度パーセンテージ）、`Message`（表示メッセージ）、`LastUpdated`（最終更新日時）などのプロパティを持ちます。
+- **スリッパカウント:** 寮の風呂の混雑度を測るための主要な指標。風呂の入り口に置かれたスリッパの数をカウントし、その数をFirebaseに記録することで、現在の混雑状況を数値化しています。この数値は、混雑度パーセンテージやメッセージの算出にも利用されます。
+
+---
+
+### 技術詳細: フロントエンド
+**フロントエンド (`Home/Index.cshtml` & JS):**
+- 取得した混雑度データは、`Home/Index.cshtml`内で表示されます。
+- JavaScriptにより、30秒間隔での自動更新と、手動での更新機能が提供されています。
+
+---
+
+### プログラム処理手順: スリッパカウントシステム
+寮の風呂の混雑度をリアルタイムで把握するため、以下の手順でデータが処理されます。
+- **1. 画像撮影 (`syori_2.py`):** 接続されたウェブカメラ（BUSID 2-9）からスリッパの画像を撮影し、一時ファイルとして保存します。
+- **2. 画像解析 (`gemini_analyzer.py`):** 撮影された画像をGoogle Gemini APIに送信し、「画像に写っているスリッパの組数」を質問します。Gemini APIの利用には、複数のモデル（`gemini-2.0-flash-lite-001`, `gemini-2.0-flash`, `gemini-1.5-flash`）を優先順位付けして試行するフォールバックロジックが実装されており、APIクォータやエラー発生時にも対応します。
+- **3. スリッパ数抽出と混雑度計算 (`firebase_updater.py`):** Gemini APIからの解析結果（テキスト）から正規表現を用いてスリッパの組数（数字）を抽出し、その数に基づいて寮の風呂の混雑度（「空いています」などのレベル、パーセンテージ、表示メッセージ）を計算します。
+- **4. Firebaseへのデータ送信 (`firebase_updater.py`):** 計算された混雑度データは、Firebase Admin SDKを通じてFirebase Realtime Databaseに送信されます。現在の混雑度情報（`bathCongestion/current`）がリアルタイムで更新されるとともに、履歴データ（`bathCongestion/history`）としても記録されます。
